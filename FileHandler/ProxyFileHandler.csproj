@@ -69,7 +69,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="App_Readme\Elmah.txt" />
-    <Content Include="OLD_proxy.ashx" />
     <Content Include="proxy.config" />
     <Content Include="packages.config" />
     <Content Include="proxy.ashx" />
