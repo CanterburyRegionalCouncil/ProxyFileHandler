@@ -110,6 +110,19 @@ public class ProxyFileHandlers : IHttpHandler
                 return;
             }
 
+            //TEST For image types that can not have water marks on them.
+            //    {".bmp", "image/bmp"},
+            //   {".gif", "image/gif"},
+            //   {".jpeg", "image/jpeg"},
+            //    {".jpg", "image/jpeg"},
+            //   {".png", "image/png"},
+            //    {".tif", "image/tiff"},
+            //    {".tiff", "image/tiff"},
+            //grab known types from settings
+            Array Imagetype4WaterMrk = ConfigurationManager.AppSettings["FileHandler:Imagetype4WaterMrk"]; 
+            
+            
+
             //add water mark stuff...
             var basePath = context.Server.MapPath("~/");
 
