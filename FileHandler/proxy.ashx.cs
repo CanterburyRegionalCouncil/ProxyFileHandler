@@ -4,7 +4,6 @@ using System.Linq;
 using System.Web;
 using System.Drawing;
 using System.IO;
-using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
 using System.Web.Caching;
@@ -22,12 +21,23 @@ namespace ProxyFileHandler
     public class Handler1 : IHttpHandler
     {
 
-        public async void ProcessRequest(HttpContext context)
+        //from https://github.com/maartenba/GoogleAnalyticsTracker
+        public async void GoogleTrack(string url){
+            //setup tracker
+            SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]);
+            //track the download etc
+            //GoogleAnalyticsTracker.Core.TrackingResult trackerResult2 = await tracker.TrackEventAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+            GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+        }
+
+        public void ProcessRequest(HttpContext context)
         {
 
             HttpResponse response = context.Response;
 
             string uri;
+
+            Boolean trackImage = false;
 
             try
             {
@@ -112,6 +122,7 @@ namespace ProxyFileHandler
                 //grab known types from settings
                 string[] Imagetype4WaterMrk = ConfigurationManager.AppSettings["FileHandler:Imagetype4WaterMrk"].Split(',');
 
+                #region DOwatermark
                 //if can take water mark then do it.
                 if (Imagetype4WaterMrk.Any(ext.Contains))
                 {
@@ -212,10 +223,14 @@ namespace ProxyFileHandler
                     //Draw the watermark in the bottom right hand corner of photo
                     int xPosOfWm = ((phWidth - wmWidth) - 10);
                     int yPosOfWm = ((phHeight - wmHeight) - 10);
+                    
 
                     //Only PUT CC BY COPYRIGHT ON IMAGES THAT LARGE!!!
                     if (phWidth > wmWidth)
+                    {
+                        trackImage = true;
                         grWatermark.DrawImage(imgWatermark, new Rectangle(xPosOfWm, yPosOfWm, wmWidth, wmHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
+                    }
 
                     //Finally, replace the original image with new
                     imgPhoto = bmWatermark;
@@ -270,7 +285,13 @@ namespace ProxyFileHandler
                     //clean up
                     imgWatermark.Dispose();
                     imgPhoto.Dispose();
+
+                    //track the download etc
+                   //GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
+                    if (trackImage)
+                    GoogleTrack(context.Request.Url.PathAndQuery);
                 }
+                #endregion watermark
                 else
                 {
                     //IS NON IMAGE TYPE FILE SO WATER MARK NOT ABLE TO DO
@@ -282,12 +303,13 @@ namespace ProxyFileHandler
                     response.ContentType = ext;
                     response.BinaryWrite(File.ReadAllBytes(filePath));
 
+                    //track the download etc
+                    // GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
+                    if (trackImage) 
+                        GoogleTrack(context.Request.Url.PathAndQuery);
                 };
 
-                //track the download etc
-                SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]);
-                GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
-
+                
                 if (HttpContext.Current != null)  HttpContext.Current.ApplicationInstance.CompleteRequest();
 
             }
