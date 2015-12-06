@@ -4,7 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Drawing;
 using System.IO;
-using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using System.Web.Caching;
 using System.Configuration;
@@ -18,11 +18,11 @@ namespace ProxyFileHandler
     /// <summary>
     /// Summary description for Handler1
     /// </summary>
-    public class Handler1 : IHttpHandler
+    public class Handler1 : HttpTaskAsyncHandler
     {
 
         //from https://github.com/maartenba/GoogleAnalyticsTracker
-        public async void GoogleTrack(string url){
+        public async Task GoogleTrack(string url){
             //setup tracker
             SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]);
             //track the download etc
@@ -30,7 +30,7 @@ namespace ProxyFileHandler
             GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
         }
 
-        public void ProcessRequest(HttpContext context)
+        public override async Task ProcessRequestAsync(HttpContext context)
         {
 
             HttpResponse response = context.Response;
@@ -232,6 +232,12 @@ namespace ProxyFileHandler
                         grWatermark.DrawImage(imgWatermark, new Rectangle(xPosOfWm, yPosOfWm, wmWidth, wmHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
                     }
 
+                    // Copy exif details across
+                    foreach (var id in imgPhoto.PropertyIdList)
+                    {
+                        bmWatermark.SetPropertyItem(imgPhoto.GetPropertyItem(id));
+                    }
+
                     //Finally, replace the original image with new
                     imgPhoto = bmWatermark;
                     grPhoto.Dispose();
@@ -289,7 +295,7 @@ namespace ProxyFileHandler
                     //track the download etc
                    //GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
                     if (trackImage)
-                    GoogleTrack(context.Request.Url.PathAndQuery);
+                    await GoogleTrack(context.Request.Url.PathAndQuery);
                 }
                 #endregion watermark
                 else
@@ -306,7 +312,7 @@ namespace ProxyFileHandler
                     //track the download etc
                     // GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
                     if (trackImage) 
-                        GoogleTrack(context.Request.Url.PathAndQuery);
+                        await GoogleTrack(context.Request.Url.PathAndQuery);
                 };
 
                 
@@ -323,7 +329,7 @@ namespace ProxyFileHandler
             }
         }//end of process context
 
-        public bool IsReusable
+        public override bool IsReusable
         {
             get
             {
