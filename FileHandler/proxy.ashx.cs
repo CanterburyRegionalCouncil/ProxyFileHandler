@@ -232,6 +232,12 @@ namespace ProxyFileHandler
                         grWatermark.DrawImage(imgWatermark, new Rectangle(xPosOfWm, yPosOfWm, wmWidth, wmHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
                     }
 
+                    // Copy exif details across
+                    foreach (var id in imgPhoto.PropertyIdList)
+                    {
+                        bmWatermark.SetPropertyItem(imgPhoto.GetPropertyItem(id));
+                    }
+
                     //Finally, replace the original image with new
                     imgPhoto = bmWatermark;
                     grPhoto.Dispose();
