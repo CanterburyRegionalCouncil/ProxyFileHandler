@@ -233,13 +233,9 @@ namespace ProxyFileHandler
 
                     double wmScaleBy = wmHeight / copyrightHeight;
                     
-                    //Only PUT CC BY COPYRIGHT ON IMAGES THAT LARGE!!!
-                    if (phWidth > wmWidth)
-                    {
-                        trackImage = true;
-                        grWatermark.DrawImage(imgWatermark, new Rectangle(0, phHeight, (int)Math.Round(wmWidth / wmScaleBy, 0), copyrightHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
-                    }
-
+                    trackImage = true;
+                    grWatermark.DrawImage(imgWatermark, new Rectangle(0, phHeight, (int)Math.Round(wmWidth / wmScaleBy, 0), copyrightHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
+                    
                     // Copy exif details across
                     foreach (var id in imgPhoto.PropertyIdList)
                     {
