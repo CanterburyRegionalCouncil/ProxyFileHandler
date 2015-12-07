@@ -132,14 +132,21 @@ namespace ProxyFileHandler
                     //Create the image object from the path
                     System.Drawing.Image imgPhoto = System.Drawing.Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename);
 
+                    // Increase height of image by 5% for insertion of copyright info
+                    int copyrightHeight = (int)Math.Round(imgPhoto.Height * 0.05, 0);
+
                     //Get the dimensions of imgPhoto
                     int phWidth = imgPhoto.Width;
                     int phHeight = imgPhoto.Height;
+                    int phHeightWithCopyright = imgPhoto.Height + copyrightHeight;
 
                     //Create a new object from the imgPhoto
-                    Bitmap bmPhoto = new Bitmap(phWidth, phHeight, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                    Bitmap bmPhoto = new Bitmap(phWidth, phHeightWithCopyright, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
                     bmPhoto.SetResolution(72, 72);
                     Graphics grPhoto = Graphics.FromImage(bmPhoto);
+
+                    // Add white space background for copyright info
+                    grPhoto.FillRectangle(new SolidBrush(Color.White), 0, phHeight, phWidth, copyrightHeight);
 
                     //Load the watermark image saved as .bmp and set with background color of green (Alpha=0, R=106, G=125, B=106)
                     System.Drawing.Image imgWatermark = System.Drawing.Image.FromFile(basePath + ConfigurationManager.AppSettings["FileHandler:CCBYImage"]);
@@ -207,29 +214,30 @@ namespace ProxyFileHandler
 
                     imageAttributes.SetRemapTable(remapTable, ColorAdjustType.Bitmap);
 
-                    //Change the opacity of watermark by setting 3rd row, 3rd col to .3f
-                    float[][] colorMatrixElements = { 
-                        new float[] {1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-                        new float[] {0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-                        new float[] {0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
-                        new float[] {0.0f, 0.0f, 0.0f, 0.3f, 0.0f},
-                        new float[] {0.0f, 0.0f, 0.0f, 0.0f, 1.0f}
-                        };
+                    ////Change the opacity of watermark by setting 3rd row, 3rd col to .3f
+                    //float[][] colorMatrixElements = { 
+                    //    new float[] {1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+                    //    new float[] {0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+                    //    new float[] {0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
+                    //    new float[] {0.0f, 0.0f, 0.0f, 0.3f, 0.0f},
+                    //    new float[] {0.0f, 0.0f, 0.0f, 0.0f, 1.0f}
+                    //    };
 
-                    ColorMatrix wmColorMatrix = new ColorMatrix(colorMatrixElements);
+                    //ColorMatrix wmColorMatrix = new ColorMatrix(colorMatrixElements);
 
-                    imageAttributes.SetColorMatrix(wmColorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                    //imageAttributes.SetColorMatrix(wmColorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
 
                     //Draw the watermark in the bottom right hand corner of photo
                     int xPosOfWm = ((phWidth - wmWidth) - 10);
                     int yPosOfWm = ((phHeight - wmHeight) - 10);
-                    
 
+                    double wmScaleBy = wmHeight / copyrightHeight;
+                    
                     //Only PUT CC BY COPYRIGHT ON IMAGES THAT LARGE!!!
                     if (phWidth > wmWidth)
                     {
                         trackImage = true;
-                        grWatermark.DrawImage(imgWatermark, new Rectangle(xPosOfWm, yPosOfWm, wmWidth, wmHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
+                        grWatermark.DrawImage(imgWatermark, new Rectangle(0, phHeight, (int)Math.Round(wmWidth / wmScaleBy, 0), copyrightHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
                     }
 
                     // Copy exif details across
