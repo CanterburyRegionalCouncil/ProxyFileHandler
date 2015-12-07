@@ -93,7 +93,9 @@
     <Content Include="ccbyECan.png" />
     <Content Include="test.jpg" />
     <Content Include="testme.txt" />
-    <Content Include="Web.config" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
