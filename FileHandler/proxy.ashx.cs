@@ -67,8 +67,9 @@ namespace ProxyFileHandler
 
             //vars
             string filename = "";
+            string copyright = "";
 
-            if (uri.Contains("filename"))
+            if (uri.Contains("filename") || uri.Contains("copyright"))
             {
                 Array array = uri.Split('&');
                 foreach (string a in array)
@@ -77,6 +78,10 @@ namespace ProxyFileHandler
                     if (t[0] == "filename")
                     {
                         filename = t[1];
+                    }
+                    else if (t[0] == "copyright")
+                    {
+                        copyright = t[1];
                     }
                 }
             }
@@ -118,19 +123,16 @@ namespace ProxyFileHandler
                     return;
                 }
 
-                //TEST For image types that can not have water marks on them.
+                //TEST For image types that can not have copyright on them.
                 //grab known types from settings
-                string[] Imagetype4WaterMrk = ConfigurationManager.AppSettings["FileHandler:Imagetype4WaterMrk"].Split(',');
+                string[] applyCopyrightToImageTypes = ConfigurationManager.AppSettings["FileHandler:ApplyCopyrightToImageTypes"].Split(',');
 
-                #region DOwatermark
-                //if can take water mark then do it.
-                if (Imagetype4WaterMrk.Any(ext.Contains))
+                #region Apply Copyright
+                //if can take copyright then do it.
+                if (applyCopyrightToImageTypes.Any(ext.Contains))
                 {
-                    //add water mark stuff...
-                    var basePath = context.Server.MapPath("~/");
-
                     //Create the image object from the path
-                    System.Drawing.Image imgPhoto = System.Drawing.Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename);
+                    Image imgPhoto = Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename);
 
                     // Increase height of image by 5% for insertion of copyright info
                     int copyrightHeight = (int)Math.Round(imgPhoto.Height * 0.05, 0);
@@ -141,21 +143,18 @@ namespace ProxyFileHandler
                     int phHeightWithCopyright = imgPhoto.Height + copyrightHeight;
 
                     //Create a new object from the imgPhoto
-                    Bitmap bmPhoto = new Bitmap(phWidth, phHeightWithCopyright, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                    Bitmap bmPhoto = new Bitmap(phWidth, phHeightWithCopyright, PixelFormat.Format24bppRgb);
                     bmPhoto.SetResolution(72, 72);
                     Graphics grPhoto = Graphics.FromImage(bmPhoto);
 
                     // Add white space background for copyright info
                     grPhoto.FillRectangle(new SolidBrush(Color.White), 0, phHeight, phWidth, copyrightHeight);
 
-                    //Load the watermark image saved as .bmp and set with background color of green (Alpha=0, R=106, G=125, B=106)
-                    System.Drawing.Image imgWatermark = System.Drawing.Image.FromFile(basePath + ConfigurationManager.AppSettings["FileHandler:CCBYImage"]);
-                    //System.Drawing.Image imgWatermark = System.Drawing.Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + ConfigurationManager.AppSettings["FileHandler:CCBYImage"]);
-
-                    //Size of imgWatermark
-                    int wmWidth = imgWatermark.Width;
-                    int wmHeight = imgWatermark.Height;
-
+                    // Load copyright image components
+                    Image imgCopyrightLeft = Image.FromFile(context.Server.MapPath("~/copyright-left.png"));
+                    Image imgCopyrightMiddle = Image.FromFile(context.Server.MapPath("~/copyright-middle.png"));
+                    Image imgCopyrightRight = Image.FromFile(context.Server.MapPath("~/copyright-right.png"));
+                    
                     //Draws the imgPhoto to the graphics object position at (x-0, y=0) 100% of original
                     grPhoto.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     grPhoto.DrawImage(imgPhoto, new Rectangle(0, 0, phWidth, phHeight), 0, 0, phWidth, phHeight, GraphicsUnit.Pixel);
@@ -199,56 +198,75 @@ namespace ProxyFileHandler
                     //grPhoto.DrawString(copyrightString, crFont, semiTransparBrushTwo, new PointF(xCenterOfImg + 1, yPosFromBottom + 1), StrFormat);
 
                     //Set the above into a bitmap
-                    Bitmap bmWatermark = new Bitmap(bmPhoto);
-                    bmWatermark.SetResolution(imgPhoto.HorizontalResolution, imgPhoto.VerticalResolution);
+                    Bitmap bmPhotoWithCopyright = new Bitmap(bmPhoto);
+                    bmPhotoWithCopyright.SetResolution(imgPhoto.HorizontalResolution, imgPhoto.VerticalResolution);
 
-                    Graphics grWatermark = Graphics.FromImage(bmWatermark);
-
-                    //Apply two color manipulations for the watermark
-                    ImageAttributes imageAttributes = new ImageAttributes();
-                    ColorMap colorMap = new ColorMap();
-
-                    colorMap.OldColor = Color.FromArgb(255, 0, 255, 0);
-                    colorMap.NewColor = Color.FromArgb(0, 0, 0, 0);
-                    System.Drawing.Imaging.ColorMap[] remapTable = { colorMap };
-
-                    imageAttributes.SetRemapTable(remapTable, ColorAdjustType.Bitmap);
-
-                    ////Change the opacity of watermark by setting 3rd row, 3rd col to .3f
-                    //float[][] colorMatrixElements = { 
-                    //    new float[] {1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-                    //    new float[] {0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-                    //    new float[] {0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
-                    //    new float[] {0.0f, 0.0f, 0.0f, 0.3f, 0.0f},
-                    //    new float[] {0.0f, 0.0f, 0.0f, 0.0f, 1.0f}
-                    //    };
-
-                    //ColorMatrix wmColorMatrix = new ColorMatrix(colorMatrixElements);
-
-                    //imageAttributes.SetColorMatrix(wmColorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
-
-                    //Draw the watermark in the bottom right hand corner of photo
-                    int xPosOfWm = ((phWidth - wmWidth) - 10);
-                    int yPosOfWm = ((phHeight - wmHeight) - 10);
-
-                    double wmScaleBy = wmHeight / copyrightHeight;
+                    Graphics grPhotoWithCopyright = Graphics.FromImage(bmPhotoWithCopyright);
+                    
+                    double copyrightScaleBy = imgCopyrightLeft.Height / copyrightHeight;
                     
                     trackImage = true;
-                    grWatermark.DrawImage(imgWatermark, new Rectangle(0, phHeight, (int)Math.Round(wmWidth / wmScaleBy, 0), copyrightHeight), 0, 0, wmWidth, wmHeight, GraphicsUnit.Pixel, imageAttributes);
+                    int widthCopyrightLeft = (int)Math.Round(imgCopyrightLeft.Width / copyrightScaleBy, 0);
+                    grPhotoWithCopyright.DrawImage(imgCopyrightLeft, new Rectangle(0, phHeight, widthCopyrightLeft, copyrightHeight), 0, 0, imgCopyrightLeft.Width, imgCopyrightLeft.Height, GraphicsUnit.Pixel);
+                    int widthCopyrightRight = (int)Math.Round(imgCopyrightRight.Width / copyrightScaleBy, 0);
+                    grPhotoWithCopyright.DrawImage(imgCopyrightRight, new Rectangle(phWidth - widthCopyrightRight, phHeight, widthCopyrightRight, copyrightHeight), 0, 0, imgCopyrightRight.Width, imgCopyrightRight.Height, GraphicsUnit.Pixel);
+                    // NOTE: If we stretch middle image it bleeds out to white at the far right
+                    //grPhotoWithCopyright.DrawImage(imgCopyrightMiddle, new Rectangle(widthCopyrightLeft, phHeight, phWidth - (widthCopyrightLeft + widthCopyrightRight), copyrightHeight), 0, 0, imgCopyrightMiddle.Width, imgCopyrightMiddle.Height, GraphicsUnit.Pixel);
+                    int widthCopyrightMiddle = (int)Math.Round(imgCopyrightMiddle.Width / copyrightScaleBy, 0);
+                    if (widthCopyrightMiddle < 1) widthCopyrightMiddle = 1;
+                    int spaceToFill = phWidth - widthCopyrightLeft - widthCopyrightRight;
+                    int spaceLeft = spaceToFill;
+                    while (spaceLeft > 0)
+                    {
+                        int useWidth = widthCopyrightMiddle;
+                        if (spaceLeft < useWidth) useWidth = spaceLeft;
+                        grPhotoWithCopyright.DrawImage(imgCopyrightMiddle, new Rectangle(widthCopyrightLeft + (spaceToFill - spaceLeft), phHeight, widthCopyrightMiddle, copyrightHeight), 0, 0, imgCopyrightMiddle.Width, imgCopyrightMiddle.Height, GraphicsUnit.Pixel);
+                        spaceLeft -= useWidth;
+                    }
+
+                    // Add copyright text
+
+                    if (string.IsNullOrWhiteSpace(copyright)) copyright = "Environment Canterbury"; // Default
+
+                    // Consts based on copyright image dimensions based on original pixel sizes
+                    const int CopyrightTextSpaceHeight = 95;
+                    const int CopyrightTopBorderHeight = 4;
+                    const int CopyrightTextStartLeft = 380;
+
+                    const double CopyrightTextPercentageHeightOfAvailableHeight = 0.5;
+
+                    int copyrightTextSpaceHeightScaled = (int)Math.Round(CopyrightTextSpaceHeight / copyrightScaleBy);
+
+                    // Caculate height of copyright text
+                    int copyrightTextHeight = (int)Math.Round(copyrightTextSpaceHeightScaled * CopyrightTextPercentageHeightOfAvailableHeight, 0);
+
+                    Font font = new Font("Arial", copyrightTextHeight, GraphicsUnit.Pixel);
+                    SolidBrush brush = new SolidBrush(Color.Black);
+                    StringFormat stringFormat = new StringFormat()
+                    {
+                        Alignment = StringAlignment.Near
+                    };
+
+                    SizeF textSize = grPhotoWithCopyright.MeasureString(copyright, font);
+                    
+                    //Creates a shadow effect
+                    int top = phHeight + (int)Math.Round((CopyrightTopBorderHeight / copyrightScaleBy) + ((copyrightTextSpaceHeightScaled - textSize.Height) / 2));
+                    int left = (int)Math.Round((CopyrightTextStartLeft / copyrightScaleBy));
+                    grPhotoWithCopyright.DrawString(copyright, font, brush, new PointF(left, top), stringFormat);
                     
                     // Copy exif details across
                     foreach (var id in imgPhoto.PropertyIdList)
                     {
-                        bmWatermark.SetPropertyItem(imgPhoto.GetPropertyItem(id));
+                        bmPhotoWithCopyright.SetPropertyItem(imgPhoto.GetPropertyItem(id));
                     }
 
                     //Finally, replace the original image with new
-                    imgPhoto = bmWatermark;
+                    imgPhoto = bmPhotoWithCopyright;
                     grPhoto.Dispose();
-                    grWatermark.Dispose();
+                    grPhotoWithCopyright.Dispose();
 
                     ImageCodecInfo myImageCodecInfo;
-                    System.Drawing.Imaging.Encoder myEncoder;
+                    Encoder myEncoder;
                     EncoderParameter myEncoderParameter;
                     EncoderParameters myEncoderParameters;
 
@@ -257,7 +275,7 @@ namespace ProxyFileHandler
                     // Create an Encoder object based on the GUID
 
                     // for the Quality parameter category.
-                    myEncoder = System.Drawing.Imaging.Encoder.Quality;
+                    myEncoder = Encoder.Quality;
                     myEncoderParameters = new EncoderParameters(1);
 
                     // Save the bitmap as a JPEG file with quality level 100.
@@ -293,7 +311,9 @@ namespace ProxyFileHandler
                     }
 
                     //clean up
-                    imgWatermark.Dispose();
+                    imgCopyrightLeft.Dispose();
+                    imgCopyrightMiddle.Dispose();
+                    imgCopyrightRight.Dispose();
                     imgPhoto.Dispose();
 
                     //track the download etc
@@ -304,7 +324,7 @@ namespace ProxyFileHandler
                 #endregion watermark
                 else
                 {
-                    //IS NON IMAGE TYPE FILE SO WATER MARK NOT ABLE TO DO
+                    //IS NON IMAGE TYPE FILE SO COPYRIGHT NOT ABLE TO DO
                     //get from config.
                     var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename;
 
@@ -344,7 +364,7 @@ namespace ProxyFileHandler
         /// RE SETTING EXIF TAGS
         //My SetProperty code... (for ASCII property items only!)
         //Exif 2.2 requires that ASCII property items terminate with a null (0x00).
-        private void SetProperty(ref System.Drawing.Imaging.PropertyItem prop, int iId, string sTxt)
+        private void SetProperty(ref PropertyItem prop, int iId, string sTxt)
         {
             int iLen = sTxt.Length + 1;
             byte[] bTxt = new Byte[iLen];
