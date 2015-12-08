@@ -203,7 +203,7 @@ namespace ProxyFileHandler
 
                     Graphics grPhotoWithCopyright = Graphics.FromImage(bmPhotoWithCopyright);
                     
-                    double copyrightScaleBy = imgCopyrightLeft.Height / copyrightHeight;
+                    double copyrightScaleBy = (double)imgCopyrightLeft.Height / (double)copyrightHeight;
                     
                     trackImage = true;
                     int widthCopyrightLeft = (int)Math.Round(imgCopyrightLeft.Width / copyrightScaleBy, 0);
