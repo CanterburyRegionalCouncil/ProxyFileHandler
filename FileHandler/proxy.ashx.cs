@@ -81,7 +81,7 @@ namespace ProxyFileHandler
                     }
                     else if (t[0] == "copyright")
                     {
-                        copyright = t[1];
+                        copyright = context.Server.UrlDecode(t[1]);
                     }
                 }
             }
