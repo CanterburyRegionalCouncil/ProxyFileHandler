@@ -226,7 +226,7 @@ namespace ProxyFileHandler
 
                     // Add copyright text
 
-                    if (string.IsNullOrWhiteSpace(copyright)) copyright = "Environment Canterbury"; // Default
+                    if (string.IsNullOrWhiteSpace(copyright)) copyright = ConfigurationManager.AppSettings["FileHandler:CopyrightDefault"]; // Default
 
                     // Consts based on copyright image dimensions based on original pixel sizes
                     const int CopyrightTextSpaceHeight = 95;
