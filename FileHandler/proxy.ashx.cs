@@ -113,7 +113,7 @@ namespace ProxyFileHandler
                 string ext = "image/jpeg";
                 if (filename.Split('.')[1] != null)
                 {
-                    ext = Path.GetExtension(filename);
+                    ext = GetContentType(Path.GetExtension(filename));
                 }
                 else
                 {
