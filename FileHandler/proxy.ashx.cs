@@ -68,8 +68,12 @@ namespace ProxyFileHandler
             //vars
             string filename = "";
             string copyright = "";
+            string copyrightFilename = "";
 
-            if (uri.Contains("filename") || uri.Contains("copyright"))
+            const string CopyrightPrefix = "Copyright by ";
+            const string CreativeCommonsPrefix = "cc by ";
+
+            if (uri.Contains("filename") || uri.Contains("copyright") || uri.Contains("ccby"))
             {
                 Array array = uri.Split('&');
                 foreach (string a in array)
@@ -81,7 +85,13 @@ namespace ProxyFileHandler
                     }
                     else if (t[0] == "copyright")
                     {
-                        copyright = context.Server.UrlDecode(t[1]);
+                        copyright = CopyrightPrefix + context.Server.UrlDecode(t[1]);
+                        copyrightFilename = "icon-copyright.jpg";
+                    }
+                    else if (t[0] == "ccby")
+                    {
+                        copyright = CreativeCommonsPrefix + context.Server.UrlDecode(t[1]);
+                        copyrightFilename = "icon-creativecommons.jpg";
                     }
                 }
             }
@@ -129,7 +139,7 @@ namespace ProxyFileHandler
 
                 #region Apply Copyright
                 //if can take copyright then do it.
-                if (applyCopyrightToImageTypes.Any(ext.Contains))
+                if (!string.IsNullOrEmpty(copyright) && applyCopyrightToImageTypes.Any(ext.Contains))
                 {
                     //Create the image object from the path
                     Image imgPhoto = Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename);
@@ -149,93 +159,34 @@ namespace ProxyFileHandler
 
                     // Add white space background for copyright info
                     grPhoto.FillRectangle(new SolidBrush(Color.White), 0, phHeight, phWidth, copyrightHeight);
-
+                    
                     // Load copyright image components
-                    Image imgCopyrightLeft = Image.FromFile(context.Server.MapPath("~/copyright-left.png"));
-                    Image imgCopyrightMiddle = Image.FromFile(context.Server.MapPath("~/copyright-middle.png"));
-                    Image imgCopyrightRight = Image.FromFile(context.Server.MapPath("~/copyright-right.png"));
+                    Image imgCopyright = Image.FromFile(context.Server.MapPath("~/" + copyrightFilename));
                     
                     //Draws the imgPhoto to the graphics object position at (x-0, y=0) 100% of original
                     grPhoto.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     grPhoto.DrawImage(imgPhoto, new Rectangle(0, 0, phWidth, phHeight), 0, 0, phWidth, phHeight, GraphicsUnit.Pixel);
-
-                    ////
-                    ////  THE FOLLOWING IS TO ADD TEXT _ NOT USED AS DOING IMAGE
-                    ////
-                    ////To maximize the size of the Logo text using seven different fonts
-                    //int[] sizes = new int[] { 16, 14, 12, 10, 8, 6, 4 };
-                    //Font crFont = null;
-                    //SizeF crSize = new SizeF();
-
-                    ////Determines the largest possible size of the font
-                    //for (int i = 0; i < 7; i++)
-                    //{
-                    //    crFont = new Font("arial", sizes[i], FontStyle.Bold);
-                    //    crSize = grPhoto.MeasureString(copyrightString, crFont);
-
-                    //    if ((ushort)crSize.Width < (ushort)phWidth)
-                    //        break;
-                    //}
-
-                    ////For photos with varying heights, determines a five percent position from bottom of image
-                    //int yPixlesFromBottom = (int)(phHeight * .05);
-                    //float yPosFromBottom = (int)((phHeight - yPixlesFromBottom) - (crSize.Height / 2));
-                    ////float xCenterOfImg = (phWidth / 2);
-
-                    //StringFormat StrFormat = new StringFormat();
-                    //StrFormat.Alignment = StringAlignment.Center;
-
-                    ////Create a brush with 60% Black (Alpha 153)
-                    //SolidBrush semiTransparBrushOne = new SolidBrush(Color.FromArgb(153, 0, 0, 0));
-
-                    ////Creates a shadow effect
-                    //grPhoto.DrawString(copyrightString, crFont, semiTransparBrushOne, new PointF(xCenterOfImg + 1, yPosFromBottom + 1), StrFormat);
-
-                    ////Create a brush with 60% White (Alpha 153)
-                    //SolidBrush semiTransparBrushTwo = new SolidBrush(Color.FromArgb(153, 255, 255, 255));
-
-                    ////Draws the same text on top of the previous
-                    //grPhoto.DrawString(copyrightString, crFont, semiTransparBrushTwo, new PointF(xCenterOfImg + 1, yPosFromBottom + 1), StrFormat);
-
+                    
                     //Set the above into a bitmap
                     Bitmap bmPhotoWithCopyright = new Bitmap(bmPhoto);
                     bmPhotoWithCopyright.SetResolution(imgPhoto.HorizontalResolution, imgPhoto.VerticalResolution);
 
                     Graphics grPhotoWithCopyright = Graphics.FromImage(bmPhotoWithCopyright);
                     
-                    double copyrightScaleBy = (double)imgCopyrightLeft.Height / (double)copyrightHeight;
+                    double copyrightScaleBy = (double)imgCopyright.Height / (double)copyrightHeight;
                     
                     trackImage = true;
-                    int widthCopyrightLeft = (int)Math.Round(imgCopyrightLeft.Width / copyrightScaleBy, 0);
-                    grPhotoWithCopyright.DrawImage(imgCopyrightLeft, new Rectangle(0, phHeight, widthCopyrightLeft, copyrightHeight), 0, 0, imgCopyrightLeft.Width, imgCopyrightLeft.Height, GraphicsUnit.Pixel);
-                    int widthCopyrightRight = (int)Math.Round(imgCopyrightRight.Width / copyrightScaleBy, 0);
-                    grPhotoWithCopyright.DrawImage(imgCopyrightRight, new Rectangle(phWidth - widthCopyrightRight, phHeight, widthCopyrightRight, copyrightHeight), 0, 0, imgCopyrightRight.Width, imgCopyrightRight.Height, GraphicsUnit.Pixel);
-                    // NOTE: If we stretch middle image it bleeds out to white at the far right
-                    //grPhotoWithCopyright.DrawImage(imgCopyrightMiddle, new Rectangle(widthCopyrightLeft, phHeight, phWidth - (widthCopyrightLeft + widthCopyrightRight), copyrightHeight), 0, 0, imgCopyrightMiddle.Width, imgCopyrightMiddle.Height, GraphicsUnit.Pixel);
-                    int widthCopyrightMiddle = (int)Math.Round(imgCopyrightMiddle.Width / copyrightScaleBy, 0);
-                    if (widthCopyrightMiddle < 1) widthCopyrightMiddle = 1;
-                    int spaceToFill = phWidth - widthCopyrightLeft - widthCopyrightRight;
-                    int spaceLeft = spaceToFill;
-                    while (spaceLeft > 0)
-                    {
-                        int useWidth = widthCopyrightMiddle;
-                        if (spaceLeft < useWidth) useWidth = spaceLeft;
-                        grPhotoWithCopyright.DrawImage(imgCopyrightMiddle, new Rectangle(widthCopyrightLeft + (spaceToFill - spaceLeft), phHeight, widthCopyrightMiddle, copyrightHeight), 0, 0, imgCopyrightMiddle.Width, imgCopyrightMiddle.Height, GraphicsUnit.Pixel);
-                        spaceLeft -= useWidth;
-                    }
-
+                    int widthCopyrightLeft = (int)Math.Round(imgCopyright.Width / copyrightScaleBy, 0);
+                    grPhotoWithCopyright.DrawImage(imgCopyright, new Rectangle(0, phHeight, widthCopyrightLeft, copyrightHeight), 0, 0, imgCopyright.Width, imgCopyright.Height, GraphicsUnit.Pixel);
+                    
                     // Add copyright text
-
-                    if (string.IsNullOrWhiteSpace(copyright)) copyright = ConfigurationManager.AppSettings["FileHandler:CopyrightDefault"]; // Default
-
+                    
                     // Consts based on copyright image dimensions based on original pixel sizes
-                    const int CopyrightTextSpaceHeight = 95;
-                    const int CopyrightTopBorderHeight = 4;
-                    const int CopyrightTextStartLeft = 380;
+                    const int CopyrightTextStartLeft = 70;
 
                     const double CopyrightTextPercentageHeightOfAvailableHeight = 0.5;
 
-                    int copyrightTextSpaceHeightScaled = (int)Math.Round(CopyrightTextSpaceHeight / copyrightScaleBy);
+                    int copyrightTextSpaceHeightScaled = (int)Math.Round(imgCopyright.Height / copyrightScaleBy);
 
                     // Caculate height of copyright text
                     int copyrightTextHeight = (int)Math.Round(copyrightTextSpaceHeightScaled * CopyrightTextPercentageHeightOfAvailableHeight, 0);
@@ -249,9 +200,8 @@ namespace ProxyFileHandler
 
                     SizeF textSize = grPhotoWithCopyright.MeasureString(copyright, font);
                     
-                    //Creates a shadow effect
-                    int top = phHeight + (int)Math.Round((CopyrightTopBorderHeight / copyrightScaleBy) + ((copyrightTextSpaceHeightScaled - textSize.Height) / 2));
-                    int left = (int)Math.Round((CopyrightTextStartLeft / copyrightScaleBy));
+                    int top = phHeight + (int)Math.Round((copyrightTextSpaceHeightScaled - textSize.Height) / 2);
+                    int left = (int)Math.Round((imgCopyright.Width + CopyrightTextStartLeft) / copyrightScaleBy);
                     grPhotoWithCopyright.DrawString(copyright, font, brush, new PointF(left, top), stringFormat);
                     
                     // Copy exif details across
@@ -311,9 +261,7 @@ namespace ProxyFileHandler
                     }
 
                     //clean up
-                    imgCopyrightLeft.Dispose();
-                    imgCopyrightMiddle.Dispose();
-                    imgCopyrightRight.Dispose();
+                    imgCopyright.Dispose();
                     imgPhoto.Dispose();
 
                     //track the download etc

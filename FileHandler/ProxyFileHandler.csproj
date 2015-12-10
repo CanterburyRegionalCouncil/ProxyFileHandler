@@ -79,9 +79,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="App_Readme\Elmah.txt" />
-    <Content Include="copyright-left.png" />
-    <Content Include="copyright-middle.png" />
-    <Content Include="copyright-right.png" />
+    <Content Include="icon-copyright.jpg" />
+    <Content Include="icon-creativecommons.jpg" />
+    <Content Include="icon-publicdomain.jpg" />
     <Content Include="packages.config" />
     <Content Include="proxy.ashx" />
     <Content Include="proxy.config" />
