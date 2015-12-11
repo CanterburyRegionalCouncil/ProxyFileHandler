@@ -79,9 +79,13 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="App_Readme\Elmah.txt" />
+    <Content Include="icon-copyright.jpg" />
+    <Content Include="icon-creativecommons.jpg" />
+    <Content Include="icon-publicdomain.jpg" />
     <Content Include="packages.config" />
     <Content Include="proxy.ashx" />
     <Content Include="proxy.config" />
+    <None Include="Properties\PublishProfiles\PROD.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -90,7 +94,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ccbyECan.png" />
     <Content Include="test.jpg" />
     <Content Include="testme.txt" />
     <Content Include="Web.config">
