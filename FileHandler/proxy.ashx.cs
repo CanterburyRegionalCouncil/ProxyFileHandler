@@ -266,8 +266,7 @@ namespace ProxyFileHandler
 
                     //track the download etc
                    //GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
-                    if (trackImage)
-                    await GoogleTrack(context.Request.Url.PathAndQuery);
+                    if (trackImage) await GoogleTrack(context.Request.Url.PathAndQuery);
                 }
                 #endregion watermark
                 else
@@ -283,8 +282,7 @@ namespace ProxyFileHandler
 
                     //track the download etc
                     // GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
-                    if (trackImage) 
-                        await GoogleTrack(context.Request.Url.PathAndQuery);
+                    if (trackImage) await GoogleTrack(context.Request.Url.PathAndQuery);
                 };
 
                 
@@ -308,8 +306,8 @@ namespace ProxyFileHandler
                 return false;
             }
         }
-        ///
-        /// RE SETTING EXIF TAGS
+
+        // RE SETTING EXIF TAGS
         //My SetProperty code... (for ASCII property items only!)
         //Exif 2.2 requires that ASCII property items terminate with a null (0x00).
         private void SetProperty(ref PropertyItem prop, int iId, string sTxt)
