@@ -1,16 +1,15 @@
-﻿using System;
+﻿using GoogleAnalyticsTracker.Simple;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Drawing;
-using System.IO;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-using System.Web.Caching;
 using System.Configuration;
-
+using System.Drawing;
 using System.Drawing.Imaging;
-using GoogleAnalyticsTracker.Simple;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Caching;
+using System.Xml.Serialization;
 
 
 namespace ProxyFileHandler
@@ -22,12 +21,14 @@ namespace ProxyFileHandler
     {
 
         //from https://github.com/maartenba/GoogleAnalyticsTracker
-        public async Task GoogleTrack(string url){
+        public async static Task GoogleTrackAsync(string url){
             //setup tracker
-            SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]);
-            //track the download etc
-            //GoogleAnalyticsTracker.Core.TrackingResult trackerResult2 = await tracker.TrackEventAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
-            GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+            using (SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]))
+            {
+                //track the download etc
+                //GoogleAnalyticsTracker.Core.TrackingResult trackerResult2 = await tracker.TrackEventAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+                var trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+            }
         }
 
         public override async Task ProcessRequestAsync(HttpContext context)
@@ -81,23 +82,23 @@ namespace ProxyFileHandler
                     var t = a.Split('=');
                     if (t[0] == "filename")
                     {
-                        filename = t[1];
+                        filename = HttpUtility.UrlDecode(t[1]);
                     }
                     else if (t[0] == "copyright")
                     {
-                        copyright = CopyrightPrefix + context.Server.UrlDecode(t[1]);
+                        copyright = CopyrightPrefix + HttpUtility.UrlDecode(t[1]);
                         copyrightFilename = "icon-copyright.jpg";
                     }
                     else if (t[0] == "ccby")
                     {
-                        copyright = CreativeCommonsPrefix + context.Server.UrlDecode(t[1]);
+                        copyright = CreativeCommonsPrefix + HttpUtility.UrlDecode(t[1]);
                         copyrightFilename = "icon-creativecommons.jpg";
                     }
                 }
             }
 
             //test for directory going up to pass root path i.e ".."
-            if (uri.Contains(".."))
+            if (filename.Contains(".."))
             {
                 response.Clear();
                 context.Response.StatusCode = 404;
@@ -109,9 +110,6 @@ namespace ProxyFileHandler
             // place in try to exit out gracefully.
             try
             {
-                //decode
-                filename = HttpUtility.UrlDecode(filename);
-
                 //test if no filename
                 if (filename == null)
                 {
@@ -267,7 +265,7 @@ namespace ProxyFileHandler
                     //track the download etc
                    //GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
                     if (trackImage)
-                    await GoogleTrack(context.Request.Url.PathAndQuery);
+                    await GoogleTrackAsync(context.Request.Url.PathAndQuery);
                 }
                 #endregion watermark
                 else
@@ -284,7 +282,7 @@ namespace ProxyFileHandler
                     //track the download etc
                     // GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], context.Request.Url.AbsoluteUri);
                     if (trackImage) 
-                        await GoogleTrack(context.Request.Url.PathAndQuery);
+                        await GoogleTrackAsync(context.Request.Url.PathAndQuery);
                 };
 
                 
