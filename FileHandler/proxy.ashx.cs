@@ -77,7 +77,7 @@ namespace ProxyFileHandler
                 {
                     var t = a.Split('=');
                     if (t[0] == "filename")
-                        fileRequest.FileName = HttpUtility.UrlDecode(t[1]);
+                        fileRequest.FilePath = HttpUtility.UrlDecode(t[1]);
                     else if (t[0] == "copyright")
                         fileRequest.Copyright = HttpUtility.UrlDecode(t[1]);
                     else if (t[0] == "ccby")
@@ -86,7 +86,7 @@ namespace ProxyFileHandler
             }
 
             //test for directory going up to pass root path i.e ".."
-            if (fileRequest.FileName.Contains(".."))
+            if (fileRequest.FilePath.Contains(".."))
             {
                 response.Clear();
                 context.Response.StatusCode = 404;
@@ -99,7 +99,7 @@ namespace ProxyFileHandler
             try
             {
                 //test if no filename
-                if (string.IsNullOrEmpty(fileRequest.FileName))
+                if (string.IsNullOrEmpty(fileRequest.FilePath))
                 {
                     response.End();
                     return;
@@ -107,9 +107,9 @@ namespace ProxyFileHandler
 
                 //get extension and set mixtype , \\assume jpg
                 string ext = "image/jpeg";
-                if (fileRequest.FileName.Split('.')[1] != null)
+                if (fileRequest.FilePath.Split('.')[1] != null)
                 {
-                    ext = GetContentType(Path.GetExtension(fileRequest.FileName));
+                    ext = GetContentType(Path.GetExtension(fileRequest.FilePath));
                 }
                 else
                 {
@@ -128,7 +128,7 @@ namespace ProxyFileHandler
                 if (!string.IsNullOrEmpty(GetCopyrightOrCreativeCommonsText(fileRequest)) && applyCopyrightToImageTypes.Any(ext.Contains))
                 {
                     //Create the image object from the path
-                    Image imgPhoto = Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FileName);
+                    Image imgPhoto = Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FilePath);
 
                     // Increase height of image by 5% for insertion of copyright info
                     int copyrightHeight = (int)Math.Round(imgPhoto.Height * 0.05, 0);
@@ -230,7 +230,7 @@ namespace ProxyFileHandler
 
                     //var filePath = @"\\fileservices02\GISData\Processed_Raster\Historic_Aerial_Imagery\" + @filename;
                     //get from config.
-                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FileName;
+                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FilePath;
 
                     response.Clear();
                     response.AddHeader("content-disposition", "attachment;filename=" + Path.GetFileName(filePath));
@@ -259,7 +259,7 @@ namespace ProxyFileHandler
                 {
                     //IS NON IMAGE TYPE FILE SO COPYRIGHT NOT ABLE TO DO
                     //get from config.
-                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FileName;
+                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FilePath;
 
                     response.Clear();
                     response.AddHeader("content-disposition", "attachment;filename=" + Path.GetFileName(filePath));
