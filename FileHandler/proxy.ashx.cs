@@ -11,7 +11,7 @@ using System.Configuration;
 
 using System.Drawing.Imaging;
 using GoogleAnalyticsTracker.Simple;
-
+using ProxyFileHandler.Entities;
 
 namespace ProxyFileHandler
 {
@@ -22,12 +22,14 @@ namespace ProxyFileHandler
     {
 
         //from https://github.com/maartenba/GoogleAnalyticsTracker
-        public async Task GoogleTrack(string url){
+        public async static Task GoogleTrack(string url){
             //setup tracker
-            SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]);
-            //track the download etc
-            //GoogleAnalyticsTracker.Core.TrackingResult trackerResult2 = await tracker.TrackEventAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
-            GoogleAnalyticsTracker.Core.TrackingResult trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+            using (SimpleTracker tracker = new SimpleTracker(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingCode"], ConfigurationManager.AppSettings["FileHandler:GoogleTrackingDomain"]))
+            {
+                //track the download etc
+                //GoogleAnalyticsTracker.Core.TrackingResult trackerResult2 = await tracker.TrackEventAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+                var trackerResult = await tracker.TrackPageViewAsync(ConfigurationManager.AppSettings["FileHandler:GoogleTrackingPageTitle"], url);
+            }
         }
 
         public override async Task ProcessRequestAsync(HttpContext context)
@@ -66,13 +68,8 @@ namespace ProxyFileHandler
 
 
             //vars
-            string filename = "";
-            string copyright = "";
-            string copyrightFilename = "";
-
-            const string CopyrightPrefix = "Copyright by ";
-            const string CreativeCommonsPrefix = "cc by ";
-
+            FileRequest fileRequest = new FileRequest();
+            
             if (uri.Contains("filename") || uri.Contains("copyright") || uri.Contains("ccby"))
             {
                 Array array = uri.Split('&');
@@ -80,24 +77,16 @@ namespace ProxyFileHandler
                 {
                     var t = a.Split('=');
                     if (t[0] == "filename")
-                    {
-                        filename = t[1];
-                    }
+                        fileRequest.FileName = HttpUtility.UrlDecode(t[1]);
                     else if (t[0] == "copyright")
-                    {
-                        copyright = CopyrightPrefix + context.Server.UrlDecode(t[1]);
-                        copyrightFilename = "icon-copyright.jpg";
-                    }
+                        fileRequest.Copyright = HttpUtility.UrlDecode(t[1]);
                     else if (t[0] == "ccby")
-                    {
-                        copyright = CreativeCommonsPrefix + context.Server.UrlDecode(t[1]);
-                        copyrightFilename = "icon-creativecommons.jpg";
-                    }
+                        fileRequest.CreativeCommons = HttpUtility.UrlDecode(t[1]);
                 }
             }
 
             //test for directory going up to pass root path i.e ".."
-            if (uri.Contains(".."))
+            if (fileRequest.FileName.Contains(".."))
             {
                 response.Clear();
                 context.Response.StatusCode = 404;
@@ -109,11 +98,8 @@ namespace ProxyFileHandler
             // place in try to exit out gracefully.
             try
             {
-                //decode
-                filename = HttpUtility.UrlDecode(filename);
-
                 //test if no filename
-                if (filename == null)
+                if (string.IsNullOrEmpty(fileRequest.FileName))
                 {
                     response.End();
                     return;
@@ -121,9 +107,9 @@ namespace ProxyFileHandler
 
                 //get extension and set mixtype , \\assume jpg
                 string ext = "image/jpeg";
-                if (filename.Split('.')[1] != null)
+                if (fileRequest.FileName.Split('.')[1] != null)
                 {
-                    ext = GetContentType(Path.GetExtension(filename));
+                    ext = GetContentType(Path.GetExtension(fileRequest.FileName));
                 }
                 else
                 {
@@ -139,10 +125,10 @@ namespace ProxyFileHandler
 
                 #region Apply Copyright
                 //if can take copyright then do it.
-                if (!string.IsNullOrEmpty(copyright) && applyCopyrightToImageTypes.Any(ext.Contains))
+                if (!string.IsNullOrEmpty(GetCopyrightOrCreativeCommonsText(fileRequest)) && applyCopyrightToImageTypes.Any(ext.Contains))
                 {
                     //Create the image object from the path
-                    Image imgPhoto = Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename);
+                    Image imgPhoto = Image.FromFile(ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FileName);
 
                     // Increase height of image by 5% for insertion of copyright info
                     int copyrightHeight = (int)Math.Round(imgPhoto.Height * 0.05, 0);
@@ -161,7 +147,7 @@ namespace ProxyFileHandler
                     grPhoto.FillRectangle(new SolidBrush(Color.White), 0, phHeight, phWidth, copyrightHeight);
                     
                     // Load copyright image components
-                    Image imgCopyright = Image.FromFile(context.Server.MapPath("~/" + copyrightFilename));
+                    Image imgCopyright = Image.FromFile(context.Server.MapPath("~/" + GetCopyrightOrCreativeCommonsImageFilename(fileRequest)));
                     
                     //Draws the imgPhoto to the graphics object position at (x-0, y=0) 100% of original
                     grPhoto.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -198,11 +184,11 @@ namespace ProxyFileHandler
                         Alignment = StringAlignment.Near
                     };
 
-                    SizeF textSize = grPhotoWithCopyright.MeasureString(copyright, font);
-                    
+                    string copyrightText = GetCopyrightOrCreativeCommonsText(fileRequest);
+                    SizeF textSize = grPhotoWithCopyright.MeasureString(copyrightText, font);
                     int top = phHeight + (int)Math.Round((copyrightTextSpaceHeightScaled - textSize.Height) / 2);
                     int left = (int)Math.Round((imgCopyright.Width + CopyrightTextStartLeft) / copyrightScaleBy);
-                    grPhotoWithCopyright.DrawString(copyright, font, brush, new PointF(left, top), stringFormat);
+                    grPhotoWithCopyright.DrawString(copyrightText, font, brush, new PointF(left, top), stringFormat);
                     
                     // Copy exif details across
                     foreach (var id in imgPhoto.PropertyIdList)
@@ -244,7 +230,7 @@ namespace ProxyFileHandler
 
                     //var filePath = @"\\fileservices02\GISData\Processed_Raster\Historic_Aerial_Imagery\" + @filename;
                     //get from config.
-                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename;
+                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FileName;
 
                     response.Clear();
                     response.AddHeader("content-disposition", "attachment;filename=" + Path.GetFileName(filePath));
@@ -273,7 +259,7 @@ namespace ProxyFileHandler
                 {
                     //IS NON IMAGE TYPE FILE SO COPYRIGHT NOT ABLE TO DO
                     //get from config.
-                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + @filename;
+                    var filePath = ConfigurationManager.AppSettings["FileHandler:FilePathRoot"] + fileRequest.FileName;
 
                     response.Clear();
                     response.AddHeader("content-disposition", "attachment;filename=" + Path.GetFileName(filePath));
@@ -305,6 +291,29 @@ namespace ProxyFileHandler
             {
                 return false;
             }
+        }
+
+        private string GetCopyrightOrCreativeCommonsText(FileRequest fileRequest)
+        {
+            const string CopyrightPrefix = "Copyright by ";
+            const string CreativeCommonsPrefix = "cc by ";
+
+            if (!string.IsNullOrEmpty(fileRequest.Copyright))
+                return CopyrightPrefix + fileRequest.Copyright;
+            else if (!string.IsNullOrEmpty(fileRequest.CreativeCommons))
+                return CreativeCommonsPrefix + fileRequest.CreativeCommons;
+            else
+                return "";
+        }
+
+        private string GetCopyrightOrCreativeCommonsImageFilename(FileRequest fileRequest)
+        {
+            if (!string.IsNullOrEmpty(fileRequest.Copyright))
+                return "icon-copyright.jpg";
+            else if (!string.IsNullOrEmpty(fileRequest.CreativeCommons))
+                return "icon-creativecommons.jpg";
+            else
+                return "";
         }
 
         // RE SETTING EXIF TAGS

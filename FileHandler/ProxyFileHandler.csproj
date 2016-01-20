@@ -126,6 +126,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Entities\FileRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="proxy.ashx.cs">
       <DependentUpon>proxy.ashx</DependentUpon>
